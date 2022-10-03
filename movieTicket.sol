@@ -24,7 +24,7 @@ contract NFT is ERC721URIStorage {
         uint256 movieId ;
         string movieName ;
         string showTime ;
-        string imageNFT;
+        string showDate ;
     }
 
     /// NFT token ID  => Ticket 
@@ -35,7 +35,6 @@ contract NFT is ERC721URIStorage {
         string movie ;
         string showTime ;
         string showDate ;
-        string imageAddress;
         mapping(uint256=>bool) seatsNotAvail;
     }
 
@@ -50,15 +49,13 @@ contract NFT is ERC721URIStorage {
         manager=payable(msg.sender);
     }
 
-    function addMovie(string memory movie) public
+    function addMovie(string memory _movie,string memory _showTime , string memory _showDate) public
     {
-        movies[movieID].movie=movie;
+        require(msg.sender==manager);
+        movies[movieID].movie=_movie;
+        movies[movieID].showTime=_showTime;
+        movies[movieID].showDate=_showDate;
         movieID++;
-    }
-
-    function getImage(uint _movieId,string memory _image) public
-    {
-        movies[_movieId].imageAddress=_image;
     }
 
     function getManagerName() public view returns(address)
@@ -78,24 +75,28 @@ contract NFT is ERC721URIStorage {
         return movies[_movieId].seatsNotAvail[_seatNo];
     }
 
-
-
     
      function generateNFT(uint256 tokenId) public view returns(string memory) {
         bytes memory svg = abi.encodePacked(
             '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 350 350">',
-            '<style>.base { fill: white; font-family: serif; font-size: 14px; }</style>',
-            '<rect width="100%" height="100%" fill="black" />',
-            '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
-            "Movie Name: ",
+            '<style>.base { fill: white; font-family: Algerian; font-size: 15px; }</style>',
+            '<style>.head { fill: orange; font-family: Algerian; font-size: 25px; }</style>',
+            '<rect width="100%" height="100%" fill="black"/>',
+            '<text x="50%" y="30%" class="head" dominant-baseline="middle" text-anchor="middle">',
             getMovieName(tokenId),
             '</text>',
-            '<text x="50%" y="50%" class="base" dominant-baseline="middle" text-anchor="middle">',
-            "Seat : ",
-            // getSeat(tokenId),
+            '<text x="49%" y="49%" class="base" dominant-baseline="middle" text-anchor="middle">',
+            "Seat: ",
+             getSeat(tokenId),
             '</text>',
-            '<text x="50%" y="40%" class="base" dominant-baseline="middle" text-anchor="middle">',
-            "Screen : 2",
+            '<text x="49%" y="64%" class="base" dominant-baseline="middle" text-anchor="middle">',
+            "Show Time: ",
+            getShowTime(tokenId),
+            '</text>',
+            '<text x="49%" y="79%" class="base" dominant-baseline="middle" text-anchor="middle">',
+            "Show Date: ",
+            getShowDate(tokenId),
+            '</text>',
             '</svg>'
         );
 
@@ -109,45 +110,40 @@ contract NFT is ERC721URIStorage {
     }
 
 
-        function generateNFT() public pure returns(string memory) {
-        bytes memory svg = abi.encodePacked(
-            
-        );
 
-        return
-            string(
-                abi.encodePacked(
-                    "data:image/svg+xml;base64,",
-                    Base64.encode(svg)
-                )
-            );
-    }
-
-
-
-    function getSeat(uint256 _tokenId) public view returns(uint256){
-        return tickets[_tokenId].seatNo;
+    function getSeat(uint256 _tokenId) public view returns(string memory){
+        uint seats= tickets[_tokenId].seatNo;
+        return seats.toString();
         
     }
-
-
 
     function getMovieName(uint256 _tokenId) public view returns(string memory){
         string memory name = tickets[_tokenId].movieName ;
         return name;
     }
 
+
+     function getShowTime(uint256 _tokenId) public view returns(string memory){
+        string memory name = tickets[_tokenId].showTime ;
+        return name;
+    }
+
+     function getShowDate(uint256 _tokenId) public view returns(string memory){
+        string memory name = tickets[_tokenId].showDate ;
+        return name;
+    }
+
+
      // to get the final tokenURI for a tokenId with metadata and svg together
-    function getTokenURI(uint256 tokenId) public pure returns (string memory) {
+    function getTokenURI(uint256 tokenId) public view returns (string memory) {
         bytes memory dataURI = abi.encodePacked(
             "{",
             '"name": "Movie Ticket #',
             tokenId.toString(),
             '",',
-            '"description": "Movie ticket as NFT ",',
-            '"image": "https://ipfs.io/ipfs/QmTgqnhFBMkfT9s8PHKcdXBn1f5bG3Q5hmBaR4U6hoTvb1?filename=Chainlink_Elf.png' ,
-               
-            generateNFT(),
+            '"description": "Movie ticket as NFT for the movie",',
+            '"image": "',
+            generateNFT(tokenId),
             '"',
             "}"
         );
@@ -161,22 +157,21 @@ contract NFT is ERC721URIStorage {
     }
 
      /// to mint a on chain NFT using mint and setting a token URI for the svg
-    function mint(uint256 _movieId,uint256 _seatNo) public payable returns(uint256) {
-
+  function mint(uint256 _movieId,uint256 _seatNo) public returns(uint256) {
         _tokenIds.increment();
         uint256 newItemId = _tokenIds.current();
         _safeMint(msg.sender, newItemId);
-        Movie storage _movie = movies[_movieId];
-        
-        
-        tickets[newItemId].owner=msg.sender;
-        tickets[newItemId].movieId=_movieId;
-        tickets[newItemId].seatNo=_seatNo;
-        tickets[newItemId].movieName=_movie.movie;
-        tickets[newItemId].showTime=_movie.showTime;
+        Movie  storage _movie = movies[_movieId];
+        tickets[newItemId] = Ticket(
+            msg.sender,
+            _seatNo,
+            _movieId,
+            _movie.movie,
+            _movie.showTime,
+            _movie.showDate
+        );
         _setTokenURI(newItemId, getTokenURI(newItemId));
         return(newItemId);
-    
     }
     
 }
